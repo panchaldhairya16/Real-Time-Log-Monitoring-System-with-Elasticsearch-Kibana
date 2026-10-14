@@ -1,4 +1,6 @@
-# Real-Time Log Monitoring System Using Elasticsearch and Kibana
+# Real-Time-Log-Monitoring-System-with-Elasticsearch-Kibana
+
+**Real-Time Log Monitoring System Using Elasticsearch and Kibana**
 
 A small, fully working log pipeline you can run on one Ubuntu machine:
 
