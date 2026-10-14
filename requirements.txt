@@ -1,0 +1,4 @@
+# Client major version must match the Elasticsearch server major version (8.x)
+elasticsearch>=8.19,<9
+python-dotenv>=1.0,<2
+pytest>=8,<9

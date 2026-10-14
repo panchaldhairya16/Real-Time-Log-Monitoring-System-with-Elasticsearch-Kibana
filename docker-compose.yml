@@ -1,0 +1,69 @@
+# Real-Time Log Monitoring System - Elasticsearch + Kibana (single node, LOCAL DEV ONLY)
+#
+# Security is DISABLED for simplicity. Ports are bound to 127.0.0.1 so only this
+# machine can reach them. Never expose these ports to a network.
+
+name: log-monitoring
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION:-8.19.18}
+    container_name: lm-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false          # localhost lab only!
+      - xpack.license.self_generated.type=basic
+      - cluster.name=log-monitoring
+      - bootstrap.memory_lock=true
+      - ES_JAVA_OPTS=-Xms${ES_HEAP:-512m} -Xmx${ES_HEAP:-512m}
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    ports:
+      - "127.0.0.1:${ES_PORT:-9200}:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data   # persistent across restarts (not across `down -v`)
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -Eq '\"status\":\"(green|yellow)\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION:-8.19.18}
+    container_name: lm-kibana
+    depends_on:
+      elasticsearch:
+        condition: service_healthy              # explicit startup order
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=kibana
+      # Needed so Kibana alerting rules/connectors survive Kibana restarts.
+      # These are DEMO values - generate your own for anything real.
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY:-change-me-demo-key-0123456789abcdef}
+      - XPACK_REPORTING_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY:-change-me-demo-key-0123456789abcdef}
+      - XPACK_SECURITY_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY:-change-me-demo-key-0123456789abcdef}
+      - TELEMETRY_OPTIN=false
+    ports:
+      - "127.0.0.1:${KIBANA_PORT:-5601}:5601"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 40s
+    restart: unless-stopped
+
+  # OPTIONAL: fake SMTP server so you can SEE a delivered email notification.
+  # Start with:  docker compose --profile mail up -d
+  mailpit:
+    image: axllent/mailpit:v1.20.4
+    container_name: lm-mailpit
+    profiles: ["mail"]
+    ports:
+      - "127.0.0.1:8025:8025"                   # web inbox
+    restart: unless-stopped
+
+volumes:
+  esdata:

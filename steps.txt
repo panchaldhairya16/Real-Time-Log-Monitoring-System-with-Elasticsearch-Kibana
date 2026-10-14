@@ -1,0 +1,28 @@
+Tab 1: start the stack and the shipper
+
+bash
+cd /home/dhairya/Downloads/log-monitoring-elastic
+source .venv/bin/activate
+
+docker compose up -d
+docker compose ps                  # wait until elasticsearch and kibana say "healthy" (1-3 min)
+
+python scripts/setup-index.py      # safe to repeat; it says "already exists" if the index is there
+python app/ship_logs.py --follow   # leave this running
+
+Tab 2: start the generator (open it with Ctrl+Shift+T)
+
+bash
+cd /home/dhairya/Downloads/log-monitoring-elastic
+source .venv/bin/activate
+python app/generate_logs.py        # leave this running
+
+Then open Kibana at http://localhost:5601, go to Discover or your dashboard, set the time to Last 15 minutes, and turn on auto-refresh.
+
+To stop everything
+
+bash
+# Ctrl+C in the generator tab, then Ctrl+C in the shipper tab
+docker compose stop                # keeps your data
+
+
